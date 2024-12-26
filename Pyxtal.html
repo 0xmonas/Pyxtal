@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pyxtal</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+        }
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #999;
+            margin-bottom: 2rem;
+        }
+        #dropZone {
+            width: 300px;
+            height: 200px;
+            border: 2px dashed #444;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            background: #222;
+            cursor: pointer;
+            color: #999;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        #dropZone:hover {
+            border-color: #666;
+            background: #333;
+        }
+        #dropZone.dragover {
+            background: #333;
+            border-color: #0071e3;
+        }
+        #canvas {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        #fileInput {
+            display: none;
+        }
+        .button {
+            background-color: #0071e3;
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.2rem;
+            margin: 15px 10px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #005bb5;
+        }
+        .button-container {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .button-secondary {
+            background-color: #333;
+        }
+        .button-secondary:hover {
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pyxtal</h1>
+    <p>turn your image into pixel art</p>
+    
+    <div id="dropZone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+        Drop image here or click to upload
+    </div>
+    
+    <input type="file" id="fileInput" accept="image/*">
+    <canvas id="canvas"></canvas>
+    
+    <div class="button-container">
+        <button class="button button-secondary" onclick="clearCanvas()">Clear</button>
+        <button class="button" id="downloadFullBtn">Download Full</button>
+        <button class="button" id="downloadPixelBtn">Download Pixel</button>
+    </div>
+
+    <!-- Keep your existing JavaScript but update the event listeners -->
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const downloadFullBtn = document.getElementById('downloadFullBtn');
+        const downloadPixelBtn = document.getElementById('downloadPixelBtn');
+        let tempCanvas;
+
+        function processImage(file) {
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = 1000;
+                canvas.height = 1000;
+
+                // Draw and blur background
+                ctx.drawImage(img, 0, 0, 1000, 1000);
+                ctx.filter = 'blur(5px)';
+                ctx.drawImage(canvas, 0, 0);
+                ctx.filter = 'none';
+
+                // Create pixelated center
+                tempCanvas = document.createElement('canvas');
+                tempCanvas.width = 300;
+                tempCanvas.height = 300;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Create small canvas for pixelation
+                const smallCanvas = document.createElement('canvas');
+                const smallCtx = smallCanvas.getContext('2d');
+                smallCanvas.width = 15;
+                smallCanvas.height = 15;
+                
+                smallCtx.drawImage(img, 0, 0, 15, 15);
+                
+                tempCtx.imageSmoothingEnabled = false;
+                tempCtx.drawImage(smallCanvas, 0, 0, 15, 15, 0, 0, 300, 300);
+
+                // Add crystal effect
+                for(let x = 0; x < 300; x += 20) {
+                    for(let y = 0; y < 300; y += 20) {
+                        if(x === 0 || x >= 280 || y === 0 || y >= 280) {
+                            tempCtx.fillStyle = `rgba(255,255,255,${Math.random() * 0.5 + 0.3})`;
+                            tempCtx.fillRect(x, y, 20, 20);
+                            tempCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+                            tempCtx.strokeRect(x, y, 20, 20);
+                        }
+                    }
+                }
+
+                // Draw final result
+                ctx.drawImage(tempCanvas, 0, 0, 300, 300, 350, 350, 300, 300);
+                
+                downloadFullBtn.style.display = 'inline-block';
+                downloadPixelBtn.style.display = 'inline-block';
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        });
+
+        function dropHandler(ev) {
+            ev.preventDefault();
+            const file = ev.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        }
+
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+            dropZone.classList.add('dragover');
+        }
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            downloadFullBtn.style.display = 'none';
+            downloadPixelBtn.style.display = 'none';
+        }
+
+        downloadFullBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'full-image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        downloadPixelBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'pixel-image.png';
+            
+            const pixelCanvas = document.createElement('canvas');
+            pixelCanvas.width = 300;
+            pixelCanvas.height = 300;
+            const pixelCtx = pixelCanvas.getContext('2d');
+            
+            pixelCtx.drawImage(tempCanvas, 0, 0);
+            
+            link.href = pixelCanvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>
